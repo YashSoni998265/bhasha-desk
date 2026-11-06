@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaySathi demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="toolbar">
+    <div class="brand">PaySathi <span class="tag">demo app for Bhasha Desk</span></div>
+    <nav class="langs" id="langs" aria-label="Language"></nav>
+  </header>
+
+  <main class="stage">
+    <section class="phone" aria-label="Home screen">
+      <div class="phone-top"><span data-key="app.name"></span></div>
+      <div class="screen">
+        <p class="greeting" data-key="home.greeting" data-vars='{"name": "Ananya"}'></p>
+        <div class="balance card">
+          <p data-key="home.balance" data-vars='{"amount": "12,480.50"}'></p>
+        </div>
+        <button class="primary" data-key="pay.cta"></button>
+        <p class="toast" data-key="pay.success" data-vars='{"amount": "350", "payee": "Sharma General Store"}'></p>
+      </div>
+      <nav class="tabs">
+        <span data-key="nav.home" class="active"></span>
+        <span data-key="nav.history"></span>
+        <span data-key="nav.profile"></span>
+      </nav>
+    </section>
+
+    <section class="phone" aria-label="AutoPay screen">
+      <div class="phone-top new"><span data-key="autopay.title"></span><span class="badge">new in 2.4</span></div>
+      <div class="screen">
+        <p class="subtitle" data-key="autopay.subtitle"></p>
+        <div class="card mandate">
+          <p class="merchant">Tata Power · Electricity</p>
+          <p data-key="autopay.mandate_info" data-vars='{"limit": "2,500", "merchant": "Tata Power"}'></p>
+          <p class="muted" data-key="autopay.next_debit" data-vars='{"date": "12 Dec"}'></p>
+        </div>
+        <label class="field">
+          <input value="18000" inputmode="numeric" aria-invalid="true">
+          <span class="error" data-key="autopay.limit_error" data-vars='{"max": "15,000"}'></span>
+        </label>
+        <p class="muted" data-key="autopay.reminders" data-count="1"></p>
+        <p class="muted" data-key="autopay.reminders" data-count="3"></p>
+        <div class="row">
+          <button class="primary" data-key="autopay.setup_cta"></button>
+          <button class="secondary" data-key="autopay.pause_cta"></button>
+        </div>
+        <p class="warning" data-key="autopay.cancel_warning" data-vars='{"merchant": "Tata Power"}'></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="legend">
+    <span><span class="sample missing">Dashed underline</span> = not translated yet, so the app falls back to English.</span>
+    <span id="coverage"></span>
+    <span>PaySathi is a fictional app. Its strings are translated by Bhasha Desk agents and approved by native speakers in team chat.</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
