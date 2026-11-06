@@ -65,6 +65,12 @@ India has 22 scheduled languages. In 2024, 98% of its 886 million active interne
 - **Strings go out in spreadsheets and DMs**, and come back late.
 - **The people who can judge a translation aren't in the developer workflow.** Support, ops and marketing colleagues speak the language; they don't use git.
 - **Machine translation breaks things quietly.** A `{merchant}` placeholder disappears, a button overflows, a brand name gets translated, and nobody who reads the language ever saw it.
+- **Machine translation also fails in public:**
+  - In 2025 Meta's auto-translation turned a Kannada post by Karnataka's chief minister into English announcing his death ([AP](https://abc17news.com/news/2025/07/18/meta-apologizes-after-auto-translation-mistakenly-announces-indian-state-chief-ministers-death/)).
+  - A Himachal Pradesh textbook translated the district names Kinnaur and Mandi as "transgender" and "market", and the copies were recalled ([ThePrint](https://theprint.in/india/hp-class-6-book-translates-district-names-kinnaur-as-transgender-mandi-as-market-copies-recalled/2926470/)).
+  - India's Supreme Court translates its judgments with its own AI tool and still has people correct the output before publishing ([Deccan Herald](https://www.deccanherald.com/india/software-to-translate-sc-judgments-in-9-languages-784940.html)).
+
+  The model drafts; a person who reads the language decides. Bhasha Desk makes that the release process.
 
 In payments this is about consent, not polish. RBI's e-mandate rules require a notification at least 24 hours before every AutoPay debit, and debits above ₹15,000 need extra authentication ([Business Today](https://www.businesstoday.in/personal-finance/news/story/rbi-caps-recurring-payments-at-rs15000-without-otp-under-new-e-mandate-framework-526759-2026-04-21), [Outlook Money](https://www.outlookmoney.com/amp/story/personal-finance/rbi-issues-digital-payments-e-mandate-framework-to-simplify-and-secure-recurring-transactions)). PaySathi's AutoPay screen carries exactly those strings: the mandate's limit, the next debit, the reminders. A user who can't read them in their own language can't really agree to them.
 
