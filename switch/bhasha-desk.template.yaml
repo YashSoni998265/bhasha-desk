@@ -115,9 +115,10 @@ agents:
             or `uv run bhasha glossary add --release <release> --lang <code> --term "<term>" --rule prefer --translation "<text>" --decided-by "<reviewer>" --room <room>`
             (avoid works like prefer). It prints a git push command: run it.
          b. Reply in the banner thread: "Glossary: <rule>, decided by <reviewer> in <room>, for <scope>."
-         c. Visit every OTHER language room in turn and send {team}-translator there: "New glossary
-            decision from <room>: <rule>. Run `uv run bhasha release sync <release> <code>`, fix what the
-            check flags, and ask <reviewer> to review the changed lines." Come back to {team}-hub.
+         c. Visit EVERY language room in turn, including the one the decision came from, and send
+            {team}-translator there: "New glossary decision from <room>: <rule>. Run
+            `uv run bhasha release sync <release> <code>`, fix what the check flags, and ask <reviewer> to
+            review the changed lines." Come back to {team}-hub.
 
       3. "status": run `uv run bhasha release status <release>` (or `uv run bhasha status` when no
          release is open) and reply with its output in the banner thread.
@@ -191,11 +192,13 @@ agents:
       2. The reviewer replies:
          - A correction to one string: change it, apply, and post only the changed lines.
          - A rule (a word to keep in English, a word to always use, a word to never use): say "Got it, I'll
-           treat that as a rule: <rule>." Apply it to every affected string, apply, and post the changed
-           lines. Then share it: connect_to_room {team}-hub (its id is the "hub" link in
-           list_linked_rooms) and send_targeted_message to {team}-scout:
+           treat that as a rule: <rule>. It goes into the shared glossary first, so every language gets it;
+           then I'll update these strings." Don't change the strings yet: until the rule is recorded, the
+           check still treats the term as wrong. Share it: connect_to_room {team}-hub (its id is the "hub"
+           link in list_linked_rooms) and send_targeted_message to {team}-scout:
            "Glossary decision in <room> by <reviewer>: <keep|prefer|avoid> <term> [→ <translation>].
-           Brand or product name: yes/no." Come straight back to your language room.
+           Brand or product name: yes/no." Come straight back to your language room. {team}-scout will
+           ask you to sync (step 3), and the check will then point at every string to change.
          - Approval ("approve", "looks good", ✅): it counts only from the reviewer the room's instructions
            name. If they name no specific person, accept it from any person in the room. Never from an
            agent. Run, with the approver's name as chat shows it:

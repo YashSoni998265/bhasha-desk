@@ -32,7 +32,8 @@ from bhasha.glossary import load as load_glossary
 from bhasha.glossary import rules_for
 from bhasha.integrity import VALID, approval_state, rules_digest, short, source_digest, strings_digest
 
-STAMP = "%Y-%m-%d %H:%M UTC"
+STAMP = "%Y-%m-%d %H:%M:%S UTC"
+OLD_STAMP = "%Y-%m-%d %H:%M UTC"
 
 
 def norm(release: str) -> str:
@@ -85,13 +86,14 @@ def now_utc() -> datetime:
 
 
 def parse_time(text: Optional[str]) -> Optional[datetime]:
-    """Read our own stamps ("2026-11-07 12:44 UTC") and git's ISO 8601 times."""
+    """Read our own stamps ("2026-11-07 12:44:05 UTC", or without seconds) and git's ISO 8601 times."""
     if not text:
         return None
-    try:
-        return datetime.strptime(text, STAMP).replace(tzinfo=timezone.utc)
-    except ValueError:
-        pass
+    for fmt in (STAMP, OLD_STAMP):
+        try:
+            return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
     try:
         when = datetime.fromisoformat(text)
     except ValueError:

@@ -98,7 +98,7 @@ def add_rule(
     if not decided_by.strip():
         raise BhashaError("say who decided it with --decided-by")
 
-    stamp = now or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    stamp = now or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     file = root / path_for(scope)
     data = json.loads(file.read_text(encoding="utf-8")) if file.is_file() else {"language": scope, "terms": [], "log": []}
     new = Rule(term, rule, translation if rule != "keep" else None, note, decided_by, room, stamp, release, scope)

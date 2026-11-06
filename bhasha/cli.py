@@ -14,6 +14,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 from bhasha import BhashaError, __version__, ci, doctor, gitops, release, report
 from bhasha.catalog import Catalog, LOCALES, find_root, ordered, write_json
@@ -152,15 +153,14 @@ def _release_of_branch(root: Path, code: str):
     return None
 
 
-def cmd_apply(args) -> int:
-    root = find_root(args.C)
+def apply_translations(root: Path, code: str, incoming: dict, commit: bool = True) -> dict:
+    """Write translations for one language, commit them, and check the result.
+
+    Returns what changed, the commit, the findings, and whether an approval on
+    this language branch no longer matches (so the reviewer must approve again).
+    """
     cat = Catalog.at(root)
-    info = cat.language(args.lang)
-    raw = sys.stdin.read() if args.file == "-" else Path(args.file).read_text(encoding="utf-8")
-    try:
-        incoming = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise BhashaError(f"{args.file} is not valid JSON: {exc}") from exc
+    info = cat.language(code)
     if not isinstance(incoming, dict) or not all(isinstance(v, str) for v in incoming.values()):
         raise BhashaError('expected a JSON object of {"key": "translation"}')
     eng = cat.english
@@ -168,66 +168,87 @@ def cmd_apply(args) -> int:
     if unknown:
         raise BhashaError("these keys aren't in en.json: " + ", ".join(unknown))
 
-    created = not cat.has_locale(args.lang)
-    current = cat.locale(args.lang)
+    created = not cat.has_locale(code)
+    current = cat.locale(code)
     changed = [k for k, v in incoming.items() if current.get(k) != v]
     current.update(incoming)
-    path = root / LOCALES / f"{args.lang}.json"
+    path = root / LOCALES / f"{code}.json"
     write_json(path, ordered(eng, current))
     paths = [path.relative_to(root)]
     if created:
         index = cat.index
-        if args.lang not in index:
-            index.append(args.lang)
+        if code not in index:
+            index.append(code)
             write_json(root / LOCALES / "index.json", index)
             paths.append(Path(LOCALES) / "index.json")
 
     sha = None
-    if not args.no_commit and changed:
+    if commit and changed:
         verb = "Translate" if created or len(changed) > 1 else "Update"
-        sha = gitops.commit(root, paths, f"{verb} {len(changed)} {info['name']} string{'s' if len(changed) != 1 else ''} ({args.lang})")
+        sha = gitops.commit(root, paths, f"{verb} {len(changed)} {info['name']} string{'s' if len(changed) != 1 else ''} ({code})")
     after = Catalog.at(root)
-    found = findings_for(after, args.lang)
-    summary = f"Applied {len(changed)} change{'s' if len(changed) != 1 else ''} to {lang_label(cat, args.lang)}" + (f" in commit {sha}" if sha else "")
-    print(summary)
-    print(render_findings(after, args.lang, found))
+    found = findings_for(after, code)
 
-    rel = _release_of_branch(root, args.lang)
+    voided_by = None
+    rel = _release_of_branch(root, code)
     if rel and changed:
-        approval_file = root / release.approval_path(rel, args.lang)
+        approval_file = root / release.approval_path(rel, code)
         if approval_file.is_file():
             approval = json.loads(approval_file.read_text(encoding="utf-8"))
-            if approval_state(approval, after.english, after.meta, after.locale(args.lang)) != VALID:
-                print(f"{WARN} {approval.get('approved_by', 'The reviewer')} approved the earlier strings, so that approval "
-                      f"no longer counts. Show the changed lines and ask for approval again.")
-    return 1 if errors(found) else 0
+            if approval_state(approval, after.english, after.meta, after.locale(code)) != VALID:
+                voided_by = approval.get("approved_by", "The reviewer")
+    return {"language": code, "name": info["name"], "changed": changed, "commit": sha, "findings": found,
+            "catalog": after, "approval_voided_by": voided_by}
+
+
+def cmd_apply(args) -> int:
+    root = find_root(args.C)
+    raw = sys.stdin.read() if args.file == "-" else Path(args.file).read_text(encoding="utf-8")
+    try:
+        incoming = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise BhashaError(f"{args.file} is not valid JSON: {exc}") from exc
+    res = apply_translations(root, args.lang, incoming, commit=not args.no_commit)
+    cat = res["catalog"]
+    n = len(res["changed"])
+    print(f"Applied {n} change{'s' if n != 1 else ''} to {lang_label(cat, args.lang)}" + (f" in commit {res['commit']}" if res["commit"] else ""))
+    print(render_findings(cat, args.lang, res["findings"]))
+    if res["approval_voided_by"]:
+        print(f"{WARN} {res['approval_voided_by']} approved the earlier strings, so that approval "
+              f"no longer counts. Show the changed lines and ask for approval again.")
+    return 1 if errors(res["findings"]) else 0
 
 
 # ── glossary ─────────────────────────────────────────────────────────────
 
 
-def cmd_glossary_add(args) -> int:
-    start_dir = Path(args.C or Path.cwd())
+def record_decision(start_dir: Path, scope: str, term: str, rule_kind: str, decided_by: str, room: str,
+                    rel: Optional[str] = None, translation: Optional[str] = None, note: str = "") -> dict:
+    """Record a reviewer's glossary decision, on the release branch when a release is given."""
     target = find_root(start_dir)
     push = None
-    if args.release:
-        info = release.start(start_dir, args.release)
+    if rel:
+        info = release.start(start_dir, rel)
         target = Path(info["worktree"])
         push = f"git -C {target} push origin {info['branch']}"
-    scope = "common" if args.common else args.lang
     if not scope:
         raise BhashaError("say which glossary: --lang <code> or --common")
     if scope != "common":
         Catalog.at(target).language(scope)
-    rule, change = add_rule(target, scope, args.term, args.rule, args.decided_by, args.room,
-                            translation=args.translation, note=args.note or "",
-                            release=release.norm(args.release) if args.release else None)
+    rule, change = add_rule(target, scope, term, rule_kind, decided_by, room, translation=translation, note=note,
+                            release=release.norm(rel) if rel else None)
     where = "every language" if scope == "common" else Catalog.at(target).language(scope)["name"]
     sha = gitops.commit(target, [Path("glossary") / f"{scope}.json"],
-                        f"Glossary ({where}): {change}, decided by {args.decided_by} in {args.room}")
-    print(f"Recorded for {where}: {change} ({rule.provenance()})" + (f" in commit {sha}" if sha else ""))
-    if push:
-        print(f"Share it with the other languages: {push}")
+                        f"Glossary ({where}): {change}, decided by {decided_by} in {room}")
+    return {"rule": rule, "change": change, "where": where, "commit": sha, "worktree": target, "push": push}
+
+
+def cmd_glossary_add(args) -> int:
+    res = record_decision(Path(args.C or Path.cwd()), "common" if args.common else args.lang, args.term, args.rule,
+                          args.decided_by, args.room, rel=args.release, translation=args.translation, note=args.note or "")
+    print(f"Recorded for {res['where']}: {res['change']} ({res['rule'].provenance()})" + (f" in commit {res['commit']}" if res["commit"] else ""))
+    if res["push"]:
+        print(f"Share it with the other languages: {res['push']}")
     return 0
 
 
@@ -354,6 +375,12 @@ def cmd_serve(args) -> int:
     return 0
 
 
+def cmd_demo_run(args) -> int:
+    from bhasha import demo
+    return demo.run(Path(args.C) if args.C else None, keep=Path(args.keep) if args.keep else None,
+                    serve=args.serve, port=args.port)
+
+
 def cmd_demo_clean(args) -> int:
     cwd = Path(args.C or Path.cwd()).resolve()
     prefix = release.branch(args.release)
@@ -469,6 +496,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_serve)
 
     d = sub.add_parser("demo", help="demo helpers").add_subparsers(dest="action", required=True)
+    s = d.add_parser("run", help="replay a whole release in seconds, with no Switch and no AI")
+    s.add_argument("--serve", action="store_true", help="then serve the shipped app")
+    s.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
+    s.add_argument("--keep", metavar="DIR", help="build the replay in DIR (empty or new) and keep it")
+    s.set_defaults(func=cmd_demo_run)
     s = d.add_parser("clean", help="delete a release's branches and worktrees to record again")
     s.add_argument("release")
     s.add_argument("--remote", action="store_true", help="also delete the branches on origin")
