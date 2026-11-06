@@ -23,7 +23,7 @@ flowchart LR
   hub -->|"same rule, every language"| hi
   hi -->|"approved, published"| b1[(l10n/r2.4-hi)]
   ta -->|"approved, published"| b2[(l10n/r2.4-ta)]
-  lead -->|"@bhasha-release ship 2.4"| rel["#bhasha-release<br/>bhasha-release<br/>(answers only the lead)"]
+  lead -->|"@bhasha-release ship 2.4"| rel["#bhasha-ship<br/>bhasha-release<br/>(answers only the lead)"]
   b1 --> rel
   b2 --> rel
   rel -->|"merge, re-check, notes"| pr[[Pull request]]
@@ -33,7 +33,7 @@ flowchart LR
 2. In `#bhasha-hi` and `#bhasha-ta`, **bhasha-translator** drafts the new strings in that room's language. Every draft has already passed `bhasha check` (placeholders, tags, length limits, script, English left behind, glossary rules) before a person sees it.
 3. The **native-speaking reviewer** in each room replies in the thread: "approve", or a correction. A correction that is really a rule ("keep *AutoPay* in English, it's our product name") becomes a **glossary decision**: the scout records it once with who decided it and where, and every other language picks it up. The checker then enforces it everywhere, so one person's correction fixes every language.
 4. When the reviewer approves, the translator records the approval and publishes the language branch. Recording refuses failing work, and work that hasn't picked up the latest glossary decisions.
-5. The lead tells **bhasha-release** in `#bhasha-release` to ship. It merges only approved languages, re-runs every check on the merged result, writes release notes naming each reviewer and every glossary decision, and opens the pull request.
+5. The lead tells **bhasha-release** in `#bhasha-ship` to ship. It merges only approved languages, re-runs every check on the merged result, writes release notes naming each reviewer and every glossary decision, and opens the pull request.
 
 **The artifact:** a pull request with reviewed locale files, approval records with the reviewer's name, and the glossary decisions behind them.
 
@@ -49,7 +49,7 @@ The people who can judge a Hindi or Tamil translation aren't developers. They li
 | **Linked rooms, hub and work rooms** | The hub holds one banner per release; work happens in language rooms; the scout makes round trips and comes home. |
 | **Addressing policies** | The translator takes instructions from anyone in its rooms (reviewers aren't Switch users). The scout takes them from the lead and the lead's agents. **bhasha-release answers only the lead**: a reviewer saying "ship it" is refused, visibly. |
 | **Approvals in chat** | `auto_approve` is off. Publishing a branch is a person's approval in the room, and Switch records who answered. |
-| **Exclusive role** | `release-captain` in `#bhasha-release`: one holder at a time. |
+| **Exclusive role** | `release-captain` in `#bhasha-ship`: one holder at a time. |
 | **Follow the conversation** | Reviewers reply in the thread without @-mentioning anything. |
 | **Agents talking to agents** | The translator hands a reviewer's rule to the scout in the hub; the scout hands it to every other language room. |
 
@@ -92,9 +92,10 @@ You need macOS, [Switch Console 0.40.1](https://github.com/sandbox-quantum/switc
    - **Repository:** your fork or bare repo
    - **Messaging app:** Mattermost or your Slack
    - **Reviewers:** their names
+   - **Name prefix:** `bhasha`, or another prefix for a trial run, since every agent and room name starts with it
 5. In `#bhasha-hub`, the kickoff wakes the scout, which posts each language's status. Then type `@scout release 2.4` and follow the briefs into `#bhasha-hi` and `#bhasha-ta`.
 6. Review as the reviewer: correct one string, set one rule, and type `approve`.
-7. In `#bhasha-release`, type `@bhasha-release ship 2.4`.
+7. In `#bhasha-ship`, type `@bhasha-release ship 2.4`.
 
 ## For judges
 
