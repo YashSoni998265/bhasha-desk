@@ -3,7 +3,10 @@
 import { readFileSync } from "node:fs";
 
 const app = readFileSync(process.argv[2], "utf8");
-const body = app.slice(app.indexOf("function canonical"), app.indexOf("async function showApproval"));
+const start = app.indexOf("// --- digest:");
+const end = app.indexOf("// --- end digest ---");
+if (start < 0 || end < start) throw new Error("app.js lost its digest markers");
+const body = app.slice(start, end);
 const { canonical, sha256 } = new Function(`${body}; return { canonical, sha256 };`)();
 const out = {};
 for (const file of process.argv.slice(3)) {

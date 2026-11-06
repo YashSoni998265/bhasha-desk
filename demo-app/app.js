@@ -23,7 +23,8 @@ async function loadApprovals() {
   return approvals;
 }
 
-// The same canonical JSON as bhasha/integrity.py: keys sorted, no whitespace, UTF-8.
+// --- digest: the same canonical JSON and SHA-256 as bhasha/integrity.py (tests/test_app_digest.py checks it) ---
+// Keys sorted, no whitespace, UTF-8.
 function canonical(value) {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object") {
@@ -36,6 +37,7 @@ async function sha256(text) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return "sha256:" + Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
 }
+// --- end digest ---
 
 // "Try it": change one approved string in memory and watch the check catch it.
 const TRY_KEY = "autopay.pause_cta";
