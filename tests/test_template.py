@@ -83,6 +83,16 @@ def test_language_rooms_are_registered_on_the_hub(doc):
     assert not labels["{team}-ship"].startswith("language: ")
 
 
+def test_agents_belong_to_every_room_their_instructions_send_them_to(doc):
+    """Switch's connect_to_room only works for members, so the round trips need memberships."""
+    rooms = {r["name"]: set(r["agents"]) for r in doc["rooms"]}
+    language_rooms = [n for n in rooms if n not in ("{team}-hub", "{team}-ship")]
+    assert "{team}-translator" in rooms["{team}-hub"], "the translator brings reviewers' rules to the scout in the hub"
+    for name in language_rooms:
+        assert {"{team}-scout", "{team}-translator"} <= rooms[name], f"the scout briefs and syncs {name}"
+    assert rooms["{team}-ship"] == {"{team}-release"}, "only the release agent works in the release room"
+
+
 def test_prompts_never_address_an_agent_by_accident(doc):
     for a in doc["agents"]:
         assert not re.search(r"@[\w{]", a["instructions"]), f"a literal @name in {a['name']}'s instructions would address that agent"

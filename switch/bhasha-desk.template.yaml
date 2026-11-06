@@ -263,7 +263,9 @@ rooms:
   - name: "{team}-hub"
     description: Releases start here. One banner per release; every update is a reply in its thread.
     bridge: "{bridge}"
-    agents: ["{team}-scout"]
+    # The translator is a member so it can bring a reviewer's rule to the scout
+    # here: an agent can only connect to rooms it belongs to.
+    agents: ["{team}-scout", "{team}-translator"]
     users: ["{$creator}"]
     aliases: {"{team}-scout": scout}
     instructions: |
