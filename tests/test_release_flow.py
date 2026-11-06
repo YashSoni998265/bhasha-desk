@@ -16,6 +16,7 @@ import pytest
 
 from bhasha import BhashaError, release
 from bhasha.cli import main
+from bhasha.integrity import strings_digest
 
 REPO = Path(__file__).resolve().parents[1]
 ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
@@ -150,6 +151,13 @@ def test_release_from_start_to_notes(team, tmp_path, capsys):
     assert "Tamil approved by Arjun (2 revisions, 1 glossary sync)" in notes
     assert "Hindi approved by Priya (1 revision)" in notes
     assert "From release opened to pull request: **" in notes
+    # The app gets a summary of who approved what, with the digests it re-checks in the browser.
+    summary_file = Path(merged["worktree"]) / "demo-app/locales/approvals.json"
+    published = json.loads(summary_file.read_text(encoding="utf-8"))
+    assert published["release"] == "2.4" and set(published["languages"]) == {"hi", "ta"}
+    shipped_ta = json.loads((Path(merged["worktree"]) / "demo-app/locales/ta.json").read_text(encoding="utf-8"))
+    assert published["languages"]["ta"]["approved_by"] == "Arjun"
+    assert published["languages"]["ta"]["strings_sha256"] == strings_digest(shipped_ta)
     sh(merged["worktree"], "push", "-q", "-u", "origin", "l10n/r2.4")
 
     # CI checks out the pushed branch on a clean machine and runs the same gate.

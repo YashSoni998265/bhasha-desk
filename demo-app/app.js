@@ -7,6 +7,59 @@ const NATIVE = {
 };
 
 const cache = {};
+let approvals = null;
+
+// Written by `bhasha release merge`: who approved each language, and a SHA-256
+// of the exact strings they approved.
+async function loadApprovals() {
+  if (approvals === null) {
+    try {
+      const res = await fetch("locales/approvals.json", { cache: "no-store" });
+      approvals = res.ok ? await res.json() : {};
+    } catch (_) {
+      approvals = {};
+    }
+  }
+  return approvals;
+}
+
+// The same canonical JSON as bhasha/integrity.py: keys sorted, no whitespace, UTF-8.
+function canonical(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+async function sha256(text) {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return "sha256:" + Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function showApproval(code, strings) {
+  const el = document.getElementById("approval");
+  const data = await loadApprovals();
+  const a = data.languages && data.languages[code];
+  el.className = "approval";
+  el.hidden = code === "en" || !a;
+  if (el.hidden) return;
+  let verified = null;
+  try {
+    verified = (await sha256(canonical(strings))) === a.strings_sha256;
+  } catch (_) {
+    // No WebCrypto outside a secure context (https or localhost): say who approved, without the check.
+  }
+  if (verified === false) {
+    el.classList.add("changed");
+    el.textContent = `⚠ These ${a.name} strings changed after ${a.approved_by} approved them for release ${data.release}.`;
+    return;
+  }
+  el.classList.add("ok");
+  const where = a.approved_in ? ` in #${a.approved_in}` : "";
+  el.textContent = `✓ ${a.name} approved by ${a.approved_by}${where} for release ${data.release}` +
+    (verified ? ` · verified in your browser: these are exactly the strings approved (${a.strings_sha256.slice(7, 19)})` : "");
+}
 
 async function load(code) {
   if (!cache[code]) {
@@ -61,6 +114,7 @@ async function show(code) {
     code === "en" ? "" : `${NATIVE[code] || code}: ${translated} of ${total} strings on screen are translated.`;
   try { localStorage.setItem("paysathi.lang", code); } catch (_) { /* private mode */ }
   history.replaceState(null, "", `?lang=${code}`);
+  await showApproval(code, strings);
 }
 
 async function start() {

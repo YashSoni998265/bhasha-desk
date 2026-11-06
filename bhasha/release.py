@@ -58,6 +58,28 @@ def manifest_path(release: str) -> str:
     return f"releases/r{norm(release)}/RELEASE.json"
 
 
+# Published with the app, so the app can show who approved each language and
+# check in the browser that the strings it shows are the ones approved.
+APPROVALS_SUMMARY = "demo-app/locales/approvals.json"
+
+
+def approvals_summary(verified: dict, shipped_at: datetime) -> dict:
+    return {
+        "release": verified["release"],
+        "shipped_at": shipped_at.isoformat(),
+        "languages": {
+            row["language"]: {
+                "name": row["name"],
+                "approved_by": row["approval"]["approved_by"],
+                "approved_in": row["approval"].get("approved_in"),
+                "approved_at": row["approval"]["approved_at"],
+                "strings_sha256": row["approval"]["strings_sha256"],
+            }
+            for row in verified["languages"]
+        },
+    }
+
+
 def now_utc() -> datetime:
     return datetime.now(timezone.utc).replace(microsecond=0)
 
@@ -363,10 +385,13 @@ def merge(cwd: Path, release: str) -> dict:
         raise BhashaError(f"after merging, verification fails ({detail}); nothing was pushed")
 
     cat = Catalog.at(wt)
-    notes = render_notes(cat, release, verified, history, now_utc())
+    shipped_at = now_utc()
+    notes = render_notes(cat, release, verified, history, shipped_at)
     (wt / notes_path(release)).parent.mkdir(parents=True, exist_ok=True)
     (wt / notes_path(release)).write_text(notes, encoding="utf-8")
-    sha = gitops.commit(wt, [notes_path(release)], f"Release notes for translations in release {norm(release)}")
+    write_json(wt / APPROVALS_SUMMARY, approvals_summary(verified, shipped_at))
+    sha = gitops.commit(wt, [notes_path(release), APPROVALS_SUMMARY],
+                        f"Release notes and approvals summary for translations in release {norm(release)}")
     repo = gitops.github_repo(wt)
     pr = None
     if repo:

@@ -65,6 +65,8 @@ Approvals are checked in three places:
 | `bhasha release status` | Shows the language as `approval stale` with the reason |
 | `bhasha release merge` / `verify` / CI | Refuses to ship: `strings changed after the approval` or `the English changed after the approval` |
 
+`merge` also publishes `demo-app/locales/approvals.json` (release, and per language: approver, room, time, `strings_sha256`). The PaySathi app reads it, recomputes the digest of the strings it is showing with WebCrypto, using the same canonical JSON (a test runs the app's own code under Node and compares it with Python's), and shows either "✓ approved by … verified in your browser" or "⚠ changed after … approved".
+
 Approving also requires that the language branch already contains everything published on `l10n/r<R>` (`merge-base --is-ancestor`), so nobody approves work that hasn't seen the latest glossary decisions.
 
 ## A language's state in a release

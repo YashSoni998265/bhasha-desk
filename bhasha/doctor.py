@@ -85,7 +85,7 @@ def data_checks(root: Path) -> list:
         elif not cat.has_locale(code):
             problems.append(f"{code} is in index.json but {LOCALES}/{code}.json is missing")
     unlisted = sorted(p.stem for p in (root / LOCALES).glob("*.json")
-                      if p.stem not in index and p.stem not in ("en", "meta", "index"))
+                      if p.stem not in index and p.stem not in ("en", "meta", "index", "approvals"))
     for code in cat.target_languages():
         if code in langs and cat.has_locale(code):
             try:

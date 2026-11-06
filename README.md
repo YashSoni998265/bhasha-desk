@@ -16,6 +16,12 @@ Built with [Switch](https://github.com/sandbox-quantum/switch) for the Flip the 
 4. `@bhasha-release ship 2.4` in `#bhasha-ship`, a command only the lead can give. It merges, verifies and opens a pull request with an audit trail. **CI re-verifies every approval** on the PR.
 5. `@scout add Bengali, reviewer Riya`: the scout creates `#bhasha-bn`, links it into the desk, and Bengali joins the release.
 
+| After a release ships, the app names each language's approver and re-checks the digest in the browser | Change one string after approval and the app says so |
+|---|---|
+| ![Tamil approved and verified](docs/images/app-approved-ta.png) | ![Tamil changed after approval](docs/images/app-tampered-ta.png) |
+
+<sub>Screenshots from a simulated run of the release flow; the names are examples.</sub>
+
 ---
 
 ## The problem
@@ -57,6 +63,7 @@ flowchart LR
 - a manifest, plus one approval record per language: reviewer, room, time and digests
 - the glossary decisions with provenance
 - release notes with a timeline from "release opened" to "pull request", the lead time
+- `demo-app/locales/approvals.json`, which the app uses to name each language's approver and verify the strings in the browser
 - a green `l10n gate` check
 
 ## Why it needs Switch
@@ -80,6 +87,7 @@ The people who can judge a Hindi or Tamil translation aren't developers, and the
 | Control | How |
 |---|---|
 | **Approvals you can verify** | Each approval stores `sha256` digests of the language's strings and of the English (with context and limits) it translates. `release status` shows a stale approval, `merge` refuses it, and CI fails it. See [the spec](docs/ARCHITECTURE.md#approval-integrity). |
+| **Verified where people read it** | The app loads the approvals summary, recomputes the SHA-256 of the strings it displays with WebCrypto, and shows "✓ Tamil approved by … verified in your browser", or a warning if the strings changed after approval. A test keeps the browser's canonical JSON byte-identical to the CLI's. |
 | **A release gate in CI** | The workflow runs `bhasha ci`. On the release PR, every shipped language must be fully translated, pass every check and carry a current approval. It runs on the merge with `main`, so an English change that lands after an approval is caught too. |
 | **Separation of duties** | The translator drafts, a native speaker approves, and only the lead ships. Pushes and the PR need a person's Allow, and only one agent can hold release-captain. |
 | **Audit trail in git** | `RELEASE.json` records who opened the release, when and from which commit. Each approval file records who, where, when and what. The glossary keeps its current rules plus an append-only log with provenance. The release notes have a timeline. |
@@ -126,7 +134,7 @@ You need:
 2. **Optional, no Switch needed:** see the deterministic half work.
    ```bash
    git clone https://github.com/YashSoni998265/bhasha-desk && cd bhasha-desk
-   uv run --group dev pytest        # 37 tests: every rule both ways, the full release flow in git, the CI gate, the template
+   uv run --group dev pytest        # 38 tests: every rule both ways, the full release flow in git, the CI gate, the template, browser/CLI digest parity
    uv run bhasha doctor             # preflight
    uv run bhasha status             # Hindi and Tamil are each 10 strings behind for release 2.4
    uv run bhasha serve              # the PaySathi app at http://127.0.0.1:8080
