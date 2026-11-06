@@ -116,6 +116,17 @@ def check(
             elif r.rule == "avoid" and r.translation and r.translation in text:
                 findings.append(Finding(key, "glossary", f"{r.describe()} ({r.provenance()})"))
 
+    # The same English in two places usually wants the same words. Only a
+    # warning: context can call for different ones.
+    by_source = {}
+    for key in scope:
+        if key in english and isinstance(translations.get(key), str) and translations[key].strip():
+            by_source.setdefault(english[key].strip(), []).append(key)
+    for same in by_source.values():
+        for other in same[1:]:
+            if translations[other].strip() != translations[same[0]].strip():
+                findings.append(Finding(other, "consistency", f"same English as {same[0]} but translated differently", "warning"))
+
     if keys is None:
         for key in translations:
             if key not in english:

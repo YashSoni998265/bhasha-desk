@@ -104,3 +104,13 @@ def test_unknown_keys_are_warnings_not_errors():
     found = check({"a": "Pay"}, {}, {"a": "செலுத்து", "zz": "x"}, "Tamil")
     assert [(f.key, f.severity) for f in found] == [("zz", "warning")]
     assert errors(found) == []
+
+
+def test_the_same_english_translated_two_ways_is_a_warning():
+    en = {"a.pause": "Pause", "b.pause": "Pause", "c.pay": "Pay now"}
+    same = check(en, {}, {"a.pause": "रोकें", "b.pause": "रोकें", "c.pay": "अभी पे करें"}, "Devanagari")
+    assert [f for f in same if f.rule == "consistency"] == []
+    differ = check(en, {}, {"a.pause": "रोकें", "b.pause": "ठहरें", "c.pay": "अभी पे करें"}, "Devanagari")
+    flagged = [f for f in differ if f.rule == "consistency"]
+    assert [(f.key, f.severity) for f in flagged] == [("b.pause", "warning")]
+    assert errors(differ) == []

@@ -5,7 +5,7 @@ that has to be exactly right: finding what needs translating, checking every
 string, recording glossary decisions and approvals, and the git work.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 
 class BhashaError(Exception):

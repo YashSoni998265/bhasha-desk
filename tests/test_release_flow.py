@@ -90,8 +90,11 @@ def write(tmp_path, name, data):
 def test_release_from_start_to_notes(team, tmp_path, capsys):
     scout, translator, shipper = team["scout"], team["translator"], team["release"]
 
-    # The scout opens the release and pushes the branch.
-    started = release.start(scout, "2.4")
+    # The scout opens the release, which records who opened it and what's new, and pushes the branch.
+    started = release.start(scout, "2.4", by="Yash")
+    manifest = json.loads((Path(started["worktree"]) / "releases/r2.4/RELEASE.json").read_text())
+    assert manifest["opened_by"] == "Yash" and len(manifest["new_strings"]) == 10
+    assert manifest["languages"] == ["hi", "ta"]
     sh(started["worktree"], "push", "-q", "-u", "origin", "l10n/r2.4")
 
     # Tamil: worktree, drafts, checks pass, then the reviewer approves.
@@ -141,7 +144,106 @@ def test_release_from_start_to_notes(team, tmp_path, capsys):
     assert "| Tamil (ta) | 18/18 | Arjun |" in notes
     assert "| Hindi (hi) | 18/18 | Priya |" in notes
     assert 'keep "AutoPay" in English (every language), decided by Arjun in bhasha-ta' in notes
+    # The timeline: who opened it, the decision, each approval with its revisions, and the lead time.
+    assert "## Timeline" in notes
+    assert "release 2.4 opened by Yash, 10 new strings" in notes
+    assert "Tamil approved by Arjun (2 revisions, 1 glossary sync)" in notes
+    assert "Hindi approved by Priya (1 revision)" in notes
+    assert "From release opened to pull request: **" in notes
     sh(merged["worktree"], "push", "-q", "-u", "origin", "l10n/r2.4")
+
+    # CI checks out the pushed branch on a clean machine and runs the same gate.
+    ci_box = tmp_path / "ci"
+    sh(tmp_path, "clone", "-q", "--branch", "l10n/r2.4", str(tmp_path / "origin.git"), str(ci_box))
+    assert bhasha("-C", ci_box, "release", "verify", "2.4") == 0
+    summary = tmp_path / "summary.md"
+    assert bhasha("-C", ci_box, "ci", "--head-ref", "l10n/r2.4", "--summary", summary) == 0
+    assert "every language translated, checked and approved" in summary.read_text()
+
+    # Anyone editing an approved string after the fact fails the gate.
+    ta_file = ci_box / "demo-app/locales/ta.json"
+    data = json.loads(ta_file.read_text())
+    data["autopay.pause_cta"] = "நிறுத்து"
+    ta_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    capsys.readouterr()
+    assert bhasha("-C", ci_box, "release", "verify", "2.4") == 1
+    assert "Tamil (ta) · 18/18 · strings changed after the approval" in capsys.readouterr().out
+
+
+def test_an_edit_after_approval_voids_it_until_the_reviewer_approves_again(team, tmp_path, capsys):
+    scout, translator, shipper = team["scout"], team["translator"], team["release"]
+    opened = release.start(scout, "2.4")["worktree"]
+    assert bhasha("-C", scout, "glossary", "add", "--common", "--term", "AutoPay", "--rule", "keep",
+                  "--decided-by", "Arjun", "--room", "bhasha-ta", "--release", "2.4") == 0
+    sh(opened, "push", "-q", "-u", "origin", "l10n/r2.4")
+    for code, strings, reviewer in (("ta", TAMIL, "Arjun"), ("hi", HINDI, "Priya")):
+        wt = Path(release.lang(translator, "2.4", code)["worktree"])
+        fixed = {k: v.replace("ஆட்டோபே", "AutoPay") for k, v in strings.items()}
+        assert bhasha("-C", wt, "apply", code, write(tmp_path, f"{code}.json", fixed)) == 0
+        assert bhasha("-C", wt, "release", "approve", "2.4", code, "--by", reviewer, "--room", f"bhasha-{code}") == 0
+        sh(wt, "push", "-q", "-u", "origin", f"l10n/r2.4-{code}")
+    states = {r["language"]: r["state"] for r in release.status(shipper, "2.4")["languages"]}
+    assert states == {"hi": "approved", "ta": "approved"}
+
+    # The translator changes one Tamil string after Arjun approved.
+    ta = Path(release.lang(translator, "2.4", "ta")["worktree"])
+    capsys.readouterr()
+    assert bhasha("-C", ta, "apply", "ta", write(tmp_path, "edit.json", {"autopay.pause_cta": "நிறுத்து"})) == 0
+    assert "Arjun approved the earlier strings, so that approval no longer counts" in capsys.readouterr().out
+    sh(ta, "push", "-q", "origin", "l10n/r2.4-ta")
+
+    report = {r["language"]: r for r in release.status(shipper, "2.4")["languages"]}
+    assert report["ta"]["state"] == "approval stale"
+    assert report["ta"]["approval_state"] == "strings changed after the approval"
+    with pytest.raises(BhashaError, match="ta: approval stale"):
+        release.merge(shipper, "2.4")
+
+    # Arjun approves the new wording; now it ships, with where each approval happened.
+    assert bhasha("-C", ta, "release", "approve", "2.4", "ta", "--by", "Arjun", "--room", "bhasha-ta") == 0
+    sh(ta, "push", "-q", "origin", "l10n/r2.4-ta")
+    notes = Path(release.merge(shipper, "2.4")["notes"]).read_text(encoding="utf-8")
+    assert "| Tamil (ta) | 18/18 | Arjun | bhasha-ta |" in notes
+
+
+def test_ci_picks_the_check_from_the_branch(team, tmp_path):
+    from bhasha.ci import classify
+
+    known = {"hi", "ta", "bn"}
+    assert classify("l10n/r2.4", known) == ("release", "2.4", None)
+    assert classify("l10n/r2.4-trial", known) == ("release", "2.4-trial", None)
+    assert classify("l10n/r2.4-trial-ta", known) == ("language", "2.4-trial", "ta")
+    assert classify("feature/readme", known) == ("default", None, None)
+    assert classify("", known) == ("default", None, None)
+
+    # On main, strings still to translate aren't failures, but a broken translation is.
+    main = team["release"]
+    assert bhasha("-C", main, "ci", "--head-ref", "feature/x", "--summary", tmp_path / "s.md") == 0
+    assert "10 still to translate" in (tmp_path / "s.md").read_text()
+    hi = main / "demo-app/locales/hi.json"
+    data = json.loads(hi.read_text())
+    data["pay.cta"] = "Pay {now}"
+    hi.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    assert bhasha("-C", main, "ci", "--head-ref", "feature/x", "--summary", tmp_path / "s.md") == 1
+
+
+def test_doctor_reports_data_and_remote_health(team, tmp_path, capsys):
+    from bhasha import doctor
+
+    root = team["scout"]
+    results = {r["check"]: r["level"] for r in doctor.run(root)}
+    assert results["origin"] == "ok" and results["languages.json"] == "ok" and results["glossary"] == "ok"
+    assert "gh" not in results  # origin isn't GitHub
+
+    sh(root, "remote", "set-url", "origin", str(tmp_path / "nowhere.git"))
+    assert {r["check"]: r["level"] for r in doctor.run(root)}["origin"] == "fail"
+    assert bhasha("-C", root, "doctor", "--offline") == 0
+
+    langs = json.loads((root / "languages.json").read_text())
+    langs["ta"]["script"] = "Tamill"
+    (root / "languages.json").write_text(json.dumps(langs, ensure_ascii=False), encoding="utf-8")
+    capsys.readouterr()
+    assert bhasha("-C", root, "doctor", "--offline") == 1
+    assert "no script table for ta (Tamill)" in capsys.readouterr().out
 
 
 def test_releases_with_a_shared_prefix_stay_apart(team, tmp_path):

@@ -1,7 +1,8 @@
 """bhasha: the command-line tool the agents (and people) run.
 
 Output is written to be pasted into a chat: one line per item, no tables,
-because Slack and Telegram don't render Markdown tables.
+because Slack and Telegram don't render Markdown tables. Commands that CI runs
+can also write a Markdown summary (--summary) for the GitHub job page.
 """
 
 from __future__ import annotations
@@ -14,16 +15,24 @@ import os
 import sys
 from pathlib import Path
 
-from bhasha import BhashaError, __version__, gitops, release
-from bhasha.catalog import Catalog, LOCALES, dump, find_root, ordered, write_json
+from bhasha import BhashaError, __version__, ci, doctor, gitops, release, report
+from bhasha.catalog import Catalog, LOCALES, find_root, ordered, write_json
 from bhasha.checker import check, errors
 from bhasha.glossary import add_rule, load as load_glossary, rules_for
+from bhasha.integrity import VALID, approval_state
 
-OK, FAIL, WAIT = "✅", "❌", "⏳"
+OK, FAIL, WAIT, WARN = report.OK, report.FAIL, report.WAIT, report.WARN
 
 
 def out(args, data, text: str) -> None:
-    print(json.dumps(data, ensure_ascii=False, indent=2) if getattr(args, "json", False) else text)
+    print(json.dumps(data, ensure_ascii=False, indent=2, default=str) if getattr(args, "json", False) else text)
+
+
+def write_summary(path, markdown: str) -> None:
+    """Append Markdown to a file, e.g. $GITHUB_STEP_SUMMARY."""
+    if path:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(markdown.rstrip() + "\n\n")
 
 
 def lang_label(cat: Catalog, code: str) -> str:
@@ -120,6 +129,8 @@ def cmd_check(args) -> int:
     failed, blocks, data = False, [], {}
     for code in codes:
         found = findings_for(cat, code)
+        if args.allow_missing:
+            found = [f for f in found if f.rule != "missing"]
         failed = failed or bool(errors(found))
         data[code] = [f.as_dict() for f in found]
         blocks.append(render_findings(cat, code, found))
@@ -128,6 +139,17 @@ def cmd_check(args) -> int:
 
 
 # ── apply ────────────────────────────────────────────────────────────────
+
+
+def _release_of_branch(root: Path, code: str):
+    """The release whose language branch is checked out here, if any."""
+    if not gitops.is_repo(root):
+        return None
+    name = gitops.current_branch(root)
+    suffix = f"-{code}"
+    if name.startswith("l10n/r") and name.endswith(suffix) and len(name) > len("l10n/r") + len(suffix):
+        return name[len("l10n/r"):-len(suffix)]
+    return None
 
 
 def cmd_apply(args) -> int:
@@ -164,10 +186,20 @@ def cmd_apply(args) -> int:
     if not args.no_commit and changed:
         verb = "Translate" if created or len(changed) > 1 else "Update"
         sha = gitops.commit(root, paths, f"{verb} {len(changed)} {info['name']} string{'s' if len(changed) != 1 else ''} ({args.lang})")
-    found = findings_for(Catalog.at(root), args.lang)
+    after = Catalog.at(root)
+    found = findings_for(after, args.lang)
     summary = f"Applied {len(changed)} change{'s' if len(changed) != 1 else ''} to {lang_label(cat, args.lang)}" + (f" in commit {sha}" if sha else "")
     print(summary)
-    print(render_findings(Catalog.at(root), args.lang, found))
+    print(render_findings(after, args.lang, found))
+
+    rel = _release_of_branch(root, args.lang)
+    if rel and changed:
+        approval_file = root / release.approval_path(rel, args.lang)
+        if approval_file.is_file():
+            approval = json.loads(approval_file.read_text(encoding="utf-8"))
+            if approval_state(approval, after.english, after.meta, after.locale(args.lang)) != VALID:
+                print(f"{WARN} {approval.get('approved_by', 'The reviewer')} approved the earlier strings, so that approval "
+                      f"no longer counts. Show the changed lines and ask for approval again.")
     return 1 if errors(found) else 0
 
 
@@ -216,11 +248,37 @@ def cmd_glossary_show(args) -> int:
 # ── release ──────────────────────────────────────────────────────────────
 
 
+def _status_line(r: dict) -> str:
+    if r["state"] == "not started":
+        return f"{WAIT} {r['language']}: not started"
+    prefix = f"{r['name']} ({r['language']}) · {r['translated']}/{r['total']} strings"
+    a = r.get("approval") or {}
+    if r["state"] == "approved":
+        where = f" in {a['approved_in']}" if a.get("approved_in") else ""
+        return f"{OK} {prefix} · approved by {a['approved_by']}{where} at {a['approved_at']} · checks pass"
+    if r["state"] == "approval stale":
+        return f"{WARN} {prefix} · {a.get('approved_by', 'the reviewer')}'s approval no longer counts: {r['approval_state']}"
+    if r["state"] == "in review":
+        return f"{WAIT} {prefix} · checks pass · waiting for the reviewer"
+    return f"{FAIL} {prefix} · {len(r['errors'])} checks fail"
+
+
+def _verify_root(cwd: Path, rel: str) -> Path:
+    """The checkout to verify: the release worktree when there is one, else this checkout."""
+    root = find_root(cwd)
+    if gitops.is_repo(root) and gitops.current_branch(root) != release.branch(rel):
+        wt = gitops.worktree_for(root, release.branch(rel))
+        if wt:
+            return wt
+    return root
+
+
 def cmd_release(args) -> int:
     cwd = Path(args.C or Path.cwd()).resolve()
     if args.action == "start":
-        info = release.start(cwd, args.release)
-        text = [f"Release {info['release']}: branch {info['branch']} in {info['worktree']}"]
+        info = release.start(cwd, args.release, by=args.by)
+        text = [f"Release {info['release']}: branch {info['branch']} in {info['worktree']}"
+                + (f" (manifest in commit {info['opened_commit']})" if info["opened_commit"] else "")]
         text.append(f"Push it so translators can start: {info['push']}" if info["push"] else "Already on origin.")
         out(args, info, "\n".join(text))
     elif args.action == "lang":
@@ -235,32 +293,50 @@ def cmd_release(args) -> int:
         print(render_findings(cat, args.lang, found))
         return 1 if errors(found) else 0
     elif args.action == "approve":
-        info = release.approve(cwd, args.release, args.lang, args.by)
-        out(args, info, f"{OK} Recorded: {info['language_name']} approved by {info['approved_by']} at {info['approved_at']}"
-                        + (f" (commit {info['commit']})" if info["commit"] else "") + f"\nPublish it: {info['push']}")
+        info = release.approve(cwd, args.release, args.lang, args.by, room=args.room)
+        where = f" in {info['approved_in']}" if info["approved_in"] else ""
+        out(args, info, f"{OK} Recorded: {info['language_name']} approved by {info['approved_by']}{where} at {info['approved_at']}"
+                        + (f" (commit {info['commit']})" if info["commit"] else "")
+                        + f"\nBound to these exact strings: {info['strings_sha256']}"
+                        + f"\nPublish it: {info['push']}")
     elif args.action == "status":
         info = release.status(cwd, args.release)
-        lines = [f"Release {info['release']} · branch {info['branch']}"]
-        for r in info["languages"]:
-            if r["state"] == "not started":
-                lines.append(f"{WAIT} {r['language']}: not started")
-                continue
-            prefix = f"{r['name']} ({r['language']}) · {r['translated']}/{r['total']} strings"
-            if r["state"] == "approved":
-                a = r["approval"]
-                lines.append(f"{OK} {prefix} · approved by {a['approved_by']} at {a['approved_at']} · checks pass")
-            elif r["state"] == "in review":
-                lines.append(f"{WAIT} {prefix} · checks pass · waiting for the reviewer")
-            else:
-                lines.append(f"{FAIL} {prefix} · {len(r['errors'])} checks fail")
+        lines = [f"Release {info['release']} · branch {info['branch']}"] + [_status_line(r) for r in info["languages"]]
         out(args, info, "\n".join(lines))
+    elif args.action == "verify":
+        result = release.verify_tree(_verify_root(cwd, args.release), args.release)
+        out(args, result, report.verify_text(result))
+        write_summary(args.summary, report.verify_markdown(result))
+        return 0 if result["ok"] else 1
     elif args.action == "merge":
         info = release.merge(cwd, args.release)
+        verified = release.verify_tree(Path(info["worktree"]), args.release)
         text = [f"{OK} Merged {', '.join(info['languages'])} into {release.branch(args.release)} (notes: {info['notes']})",
+                report.verify_text(verified),
                 f"Push: {info['push']}"]
         text.append(f"Pull request: {info['pr']}" if info["pr"] else "Origin isn't GitHub, so post the notes in the room instead of opening a pull request.")
         out(args, info, "\n".join(text))
     return 0
+
+
+# ── doctor / ci ──────────────────────────────────────────────────────────
+
+
+def cmd_doctor(args) -> int:
+    root = find_root(args.C)
+    results = doctor.run(root, offline=args.offline)
+    out(args, results, report.doctor_text(results))
+    write_summary(args.summary, "## Bhasha Desk doctor\n\n" + report.doctor_markdown(results))
+    return 1 if doctor.failed(results) else 0
+
+
+def cmd_ci(args) -> int:
+    root = find_root(args.C)
+    head_ref = args.head_ref if args.head_ref is not None else os.environ.get("GITHUB_HEAD_REF", "")
+    ok, text, markdown = ci.run(root, head_ref)
+    print(text)
+    write_summary(args.summary if args.summary is not None else os.environ.get("GITHUB_STEP_SUMMARY"), markdown)
+    return 0 if ok else 1
 
 
 # ── serve / demo ─────────────────────────────────────────────────────────
@@ -325,6 +401,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("check", help="run every deterministic check")
     s.add_argument("langs", nargs="*")
+    s.add_argument("--allow-missing", action="store_true", help="strings not translated yet aren't failures")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_check)
 
@@ -352,23 +429,40 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_glossary_show)
 
-    r = sub.add_parser("release", help="release branches, approvals and merging").add_subparsers(dest="action", required=True)
+    r = sub.add_parser("release", help="release branches, approvals, verification and merging").add_subparsers(dest="action", required=True)
     for name, helptext, extra in (
-        ("start", "open a release branch", []),
+        ("start", "open a release branch with its manifest", []),
         ("lang", "give a language its own worktree", ["lang"]),
         ("sync", "bring glossary decisions into a language", ["lang"]),
-        ("approve", "record a reviewer's approval", ["lang"]),
+        ("approve", "record a reviewer's approval of exactly these strings", ["lang"]),
         ("status", "every language's state in a release", []),
-        ("merge", "merge approved languages and write the notes", []),
+        ("verify", "the release gate: every language translated, checked and approved (CI runs this)", []),
+        ("merge", "merge approved languages, verify, and write the notes", []),
     ):
         s = r.add_parser(name, help=helptext)
         s.add_argument("release")
         for e in extra:
             s.add_argument(e)
+        if name == "start":
+            s.add_argument("--by", help="who asked for the release")
         if name == "approve":
             s.add_argument("--by", required=True, help="the reviewer's name")
+            s.add_argument("--room", help="the room the reviewer approved in")
+        if name == "verify":
+            s.add_argument("--summary", metavar="FILE", help="also append a Markdown report to FILE")
         s.add_argument("--json", action="store_true")
         s.set_defaults(func=cmd_release)
+
+    s = sub.add_parser("doctor", help="preflight: data files, remote, GitHub login")
+    s.add_argument("--offline", action="store_true", help="only check the data files")
+    s.add_argument("--summary", metavar="FILE", help="also append a Markdown report to FILE")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_doctor)
+
+    s = sub.add_parser("ci", help="what CI checks for a branch (the release gate on l10n/r<release>)")
+    s.add_argument("--head-ref", help="the pull request's branch (default: $GITHUB_HEAD_REF)")
+    s.add_argument("--summary", metavar="FILE", help="Markdown report file (default: $GITHUB_STEP_SUMMARY)")
+    s.set_defaults(func=cmd_ci)
 
     s = sub.add_parser("serve", help="serve the PaySathi demo app")
     s.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
