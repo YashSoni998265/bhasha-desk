@@ -134,7 +134,7 @@ You need:
 2. **Optional, no Switch needed:** see the deterministic half work.
    ```bash
    git clone https://github.com/YashSoni998265/bhasha-desk && cd bhasha-desk
-   uv run --group dev pytest        # 38 tests: every rule both ways, the full release flow in git, the CI gate, the template, browser/CLI digest parity
+   uv run --group dev pytest        # 39 tests: every rule both ways, the full release flow in git, the CI gate, the template, browser/CLI digest parity
    uv run bhasha doctor             # preflight
    uv run bhasha status             # Hindi and Tamil are each 10 strings behind for release 2.4
    uv run bhasha serve              # the PaySathi app at http://127.0.0.1:8080
