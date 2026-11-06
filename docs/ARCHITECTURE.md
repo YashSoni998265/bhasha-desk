@@ -24,6 +24,7 @@ The agents call the command; they never edit records by hand.
 | `l10n/r<R>-<lang>` | the translator, in that language's room | the language's locale file, `index.json` for a new language, `releases/r<R>/approvals/<lang>.json` |
 
 - **One glossary writer.** Only the scout writes the glossary, and only on `l10n/r<R>`, so there is one canonical copy and language branches never conflict. A language picks a decision up with `bhasha release sync`, which merges `l10n/r<R>` into it. Until then, `release status` already judges the language against the release branch's glossary, so a decision counts the moment it is published.
+- **A rule is recorded before any string changes, even in the room it came from.** Until "keep AutoPay" is in the glossary, "AutoPay" in Latin letters inside a Tamil string is, correctly, English left behind. So the translator hands the rule to the scout first. The scout records it and asks every language room to sync, and each room's check then points at exactly the strings to change.
 - **One worktree per language.** The translator agent serves every room, with one session per room. Each language gets its own git worktree (`wt-r<R>-<lang>`) so parallel sessions never share a working tree; lock contention on the shared object store is retried.
 
 ## Records
@@ -136,3 +137,14 @@ Every agent runs in auto mode with `auto_approve: false`: reading and checks run
 | Merging breaks a check | `merge` stops after verifying the merged tree and pushes nothing |
 | The remote or `gh` login is broken | `bhasha doctor` reports it at kickoff |
 | Two sessions touch git at once | Separate worktrees; lock errors are retried with backoff |
+
+## The replay
+
+`bhasha demo run` ([`bhasha/demo.py`](../bhasha/demo.py)) builds a bare git repository as a stand-in for GitHub, plus a checkout for each agent. It then plays release 2.4 through the same functions the agents' commands call, with canned translations ([`bhasha/demo_data.py`](../bhasha/demo_data.py)) in place of the model:
+- the drafts, then the rule recorded once and enforced in both languages
+- approvals bound to the strings
+- an edit after approval, refused at ship
+- CI passing on a clean clone, then failing on a tampered string
+
+It takes about 7 seconds. `--serve` then shows the shipped app with its approvals verified in the browser. [`tests/test_demo.py`](../tests/test_demo.py) runs it on every CI build.
+
