@@ -1,0 +1,10 @@
+{
+  "app.name": "PaySathi",
+  "nav.home": "होम",
+  "nav.history": "हिस्ट्री",
+  "nav.profile": "प्रोफ़ाइल",
+  "home.greeting": "नमस्ते, {name}",
+  "home.balance": "बैलेंस: ₹{amount}",
+  "pay.cta": "अभी पे करें",
+  "pay.success": "{payee} को ₹{amount} का पेमेंट हो गया"
+}

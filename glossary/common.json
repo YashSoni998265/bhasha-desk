@@ -1,0 +1,29 @@
+{
+  "language": "common",
+  "terms": [
+    {
+      "term": "UPI",
+      "rule": "keep",
+      "translation": null,
+      "note": "Name of India's payment system. Never translate or transliterate it.",
+      "decided_by": "PaySathi brand guide",
+      "decided_in": "seed",
+      "decided_at": "2026-11-06",
+      "release": null
+    },
+    {
+      "term": "PaySathi",
+      "rule": "keep",
+      "translation": null,
+      "note": "Our app name.",
+      "decided_by": "PaySathi brand guide",
+      "decided_in": "seed",
+      "decided_at": "2026-11-06",
+      "release": null
+    }
+  ],
+  "log": [
+    {"at": "2026-11-06", "by": "PaySathi brand guide", "room": "seed", "release": null, "change": "keep \"UPI\""},
+    {"at": "2026-11-06", "by": "PaySathi brand guide", "room": "seed", "release": null, "change": "keep \"PaySathi\""}
+  ]
+}

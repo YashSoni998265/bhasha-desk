@@ -1,0 +1,10 @@
+{
+  "app.name": "PaySathi",
+  "nav.home": "முகப்பு",
+  "nav.history": "வரலாறு",
+  "nav.profile": "சுயவிவரம்",
+  "home.greeting": "வணக்கம், {name}",
+  "home.balance": "இருப்பு: ₹{amount}",
+  "pay.cta": "இப்போது செலுத்தவும்",
+  "pay.success": "{payee}-க்கு ₹{amount} செலுத்தப்பட்டது"
+}

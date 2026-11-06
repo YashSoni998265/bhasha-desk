@@ -1,0 +1,20 @@
+{
+  "app.name": "PaySathi",
+  "nav.home": "Home",
+  "nav.history": "History",
+  "nav.profile": "Profile",
+  "home.greeting": "Hello, {name}",
+  "home.balance": "Balance: ₹{amount}",
+  "pay.cta": "Pay now",
+  "pay.success": "Paid ₹{amount} to {payee}",
+  "autopay.title": "UPI AutoPay",
+  "autopay.subtitle": "Pay your bills automatically, on time, every month.",
+  "autopay.setup_cta": "Set up AutoPay",
+  "autopay.mandate_info": "You are approving a mandate of up to ₹{limit} per month for {merchant}.",
+  "autopay.next_debit": "Next debit on {date}",
+  "autopay.pause_cta": "Pause",
+  "autopay.cancel_warning": "Cancelling stops all future payments to <b>{merchant}</b>.",
+  "autopay.reminders.one": "You will get {count} reminder before each debit.",
+  "autopay.reminders.other": "You will get {count} reminders before each debit.",
+  "autopay.limit_error": "Enter an amount between ₹1 and ₹{max}."
+}

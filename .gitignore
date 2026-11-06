@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+.env
+node_modules/
+# Switch Console writes agent credentials here; never commit them.
+.switch/

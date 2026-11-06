@@ -1,0 +1,62 @@
+{
+  "hi": {
+    "name": "Hindi",
+    "native": "हिन्दी",
+    "script": "Devanagari",
+    "tone": "Respectful आप form. Everyday Hindi as people read it in payment apps; keep the English loanwords people actually use (UPI, OTP, bank, balance) instead of formal Sanskrit words."
+  },
+  "ta": {
+    "name": "Tamil",
+    "native": "தமிழ்",
+    "script": "Tamil",
+    "tone": "Respectful forms (…ங்கள் endings). Clear, modern Tamil as used in banking apps; avoid archaic or literary words."
+  },
+  "bn": {
+    "name": "Bengali",
+    "native": "বাংলা",
+    "script": "Bengali",
+    "tone": "Respectful আপনি form. Everyday Bengali as used in payment apps; keep English loanwords where Bengali speakers use them."
+  },
+  "mr": {
+    "name": "Marathi",
+    "native": "मराठी",
+    "script": "Devanagari",
+    "tone": "Respectful आपण form. Everyday Marathi as used in apps."
+  },
+  "te": {
+    "name": "Telugu",
+    "native": "తెలుగు",
+    "script": "Telugu",
+    "tone": "Respectful మీరు form. Everyday Telugu as used in apps."
+  },
+  "kn": {
+    "name": "Kannada",
+    "native": "ಕನ್ನಡ",
+    "script": "Kannada",
+    "tone": "Respectful ನೀವು form. Everyday Kannada as used in apps."
+  },
+  "ml": {
+    "name": "Malayalam",
+    "native": "മലയാളം",
+    "script": "Malayalam",
+    "tone": "Respectful forms. Everyday Malayalam as used in apps."
+  },
+  "gu": {
+    "name": "Gujarati",
+    "native": "ગુજરાતી",
+    "script": "Gujarati",
+    "tone": "Respectful આપ form. Everyday Gujarati as used in apps."
+  },
+  "pa": {
+    "name": "Punjabi",
+    "native": "ਪੰਜਾਬੀ",
+    "script": "Gurmukhi",
+    "tone": "Respectful ਤੁਸੀਂ form. Everyday Punjabi as used in apps."
+  },
+  "or": {
+    "name": "Odia",
+    "native": "ଓଡ଼ିଆ",
+    "script": "Odia",
+    "tone": "Respectful ଆପଣ form. Everyday Odia as used in apps."
+  }
+}

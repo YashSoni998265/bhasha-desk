@@ -1,0 +1,20 @@
+{
+  "app.name": {"context": "App name in the header. It is a brand name.", "since": "1.0"},
+  "nav.home": {"context": "Bottom navigation tab.", "max_len": 12, "since": "1.0"},
+  "nav.history": {"context": "Bottom navigation tab: the list of past payments.", "max_len": 12, "since": "1.0"},
+  "nav.profile": {"context": "Bottom navigation tab.", "max_len": 12, "since": "1.0"},
+  "home.greeting": {"context": "Greeting at the top of the home screen. {name} is the user's first name.", "since": "1.0"},
+  "home.balance": {"context": "Account balance line. {amount} looks like 1,240.50.", "since": "1.0"},
+  "pay.cta": {"context": "Primary button on the pay screen.", "max_len": 18, "since": "1.0"},
+  "pay.success": {"context": "Message after a payment. {payee} is a person or a shop.", "since": "1.0"},
+  "autopay.title": {"context": "Title of the new screen for recurring payments.", "since": "2.4"},
+  "autopay.subtitle": {"context": "One line under the title explaining the feature.", "max_len": 60, "since": "2.4"},
+  "autopay.setup_cta": {"context": "Primary button that starts AutoPay setup.", "max_len": 22, "since": "2.4"},
+  "autopay.mandate_info": {"context": "Shown before the user approves a recurring UPI payment. A mandate is the standing instruction the user approves.", "since": "2.4"},
+  "autopay.next_debit": {"context": "Shows when money will next be taken. {date} looks like 12 Dec.", "since": "2.4"},
+  "autopay.pause_cta": {"context": "Small secondary button that pauses AutoPay.", "max_len": 12, "since": "2.4"},
+  "autopay.cancel_warning": {"context": "Warning before cancelling. Keep the <b> tags around the merchant.", "since": "2.4"},
+  "autopay.reminders.one": {"context": "Plural form used when count is 1.", "since": "2.4"},
+  "autopay.reminders.other": {"context": "Plural form used for every other count.", "since": "2.4"},
+  "autopay.limit_error": {"context": "Inline error under the amount field. {max} looks like 15,000.", "since": "2.4"}
+}
