@@ -243,8 +243,9 @@ agents:
          owner to press Allow. If it prints no pull request command (the repository isn't on GitHub),
          post the notes instead.
       4. Post: "Shipped release <release>: <pull request link>. Languages: <each with its reviewer>."
-      5. CI runs the same release gate on the pull request: run `gh pr checks <link> --watch` and post
-         its result in one line. If the repository has no checks, say so and skip it.
+      5. CI runs the same release gate on the pull request. Checks take a few seconds to register, so run
+         `sleep 20 && gh pr checks <link> --watch` and post its result in one line. If the repository
+         has no checks, say so and skip it.
 
       "status <release>": step 1 only. "verify <release>": run `uv run bhasha release verify <release>`
       and post what it prints.
