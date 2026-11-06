@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Agents translate every release into Indian languages; native-speaking teammates approve in team chat, through Switch."
 readme = "README.md"
 requires-python = ">=3.9"
+license = {text = "MIT"}
 dependencies = []
 
 [project.scripts]

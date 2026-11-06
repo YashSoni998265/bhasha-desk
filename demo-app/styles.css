@@ -75,3 +75,11 @@ button.secondary { background: #ece9fb; color: var(--brand); }
 }
 .approval.ok { background: #e9f7ef; color: var(--ok); border-color: #b9e4cc; }
 .approval.changed { background: #fdecec; color: var(--warn); border-color: #f3b9bd; }
+.approval { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: center; }
+.approval[hidden] { display: none; }
+.approval-action {
+  border: 1px solid currentColor; background: transparent; color: inherit; border-radius: 999px;
+  padding: 3px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.approval-action:hover { background: rgba(0, 0, 0, 0.05); }
+.tag a, .legend a { color: var(--brand); }

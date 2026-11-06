@@ -37,11 +37,27 @@ async function sha256(text) {
   return "sha256:" + Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// "Try it": change one approved string in memory and watch the check catch it.
+const TRY_KEY = "autopay.pause_cta";
+const tampered = {};
+// ?try=1 makes the change on load, so the "after an edit" state has a link of its own.
+let autoTry = new URLSearchParams(location.search).get("try") === "1";
+
+function button(label, onClick) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "approval-action";
+  b.textContent = label;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
 async function showApproval(code, strings) {
   const el = document.getElementById("approval");
   const data = await loadApprovals();
   const a = data.languages && data.languages[code];
   el.className = "approval";
+  el.replaceChildren();
   el.hidden = code === "en" || !a;
   if (el.hidden) return;
   let verified = null;
@@ -50,15 +66,37 @@ async function showApproval(code, strings) {
   } catch (_) {
     // No WebCrypto outside a secure context (https or localhost): say who approved, without the check.
   }
+  const text = document.createElement("span");
+  el.append(text);
   if (verified === false) {
     el.classList.add("changed");
-    el.textContent = `⚠ These ${a.name} strings changed after ${a.approved_by} approved them for release ${data.release}.`;
+    text.textContent = `⚠ These ${a.name} strings changed after ${a.approved_by} approved them for release ${data.release}, so this approval no longer counts.`;
+    if (tampered[code] !== undefined) {
+      el.append(button("Undo the change", () => {
+        strings[TRY_KEY] = tampered[code];
+        delete tampered[code];
+        show(code);
+      }));
+    }
     return;
   }
   el.classList.add("ok");
   const where = a.approved_in ? ` in #${a.approved_in}` : "";
-  el.textContent = `✓ ${a.name} approved by ${a.approved_by}${where} for release ${data.release}` +
+  text.textContent = `✓ ${a.name} approved by ${a.approved_by}${where} for release ${data.release}` +
     (verified ? ` · verified in your browser: these are exactly the strings approved (${a.strings_sha256.slice(7, 19)})` : "");
+  if (verified && typeof strings[TRY_KEY] === "string") {
+    const tamper = () => {
+      tampered[code] = strings[TRY_KEY];
+      strings[TRY_KEY] = `${strings[TRY_KEY]}!`;
+      show(code);
+    };
+    if (autoTry) {
+      autoTry = false;
+      tamper();
+      return;
+    }
+    el.append(button("Try it: change one word", tamper));
+  }
 }
 
 async function load(code) {
