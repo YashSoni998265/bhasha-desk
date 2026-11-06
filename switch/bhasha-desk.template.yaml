@@ -193,8 +193,10 @@ agents:
            lines. Then share it: connect_to_room {team}-hub and send_targeted_message to {team}-scout:
            "Glossary decision in <room> by <reviewer>: <keep|prefer|avoid> <term> [→ <translation>].
            Brand or product name: yes/no." Come straight back to your language room.
-         - Approval ("approve", "looks good", ✅) from the reviewer: run
-           `uv run bhasha release approve <release> <code> --by "<reviewer>" --room <this room's name>`.
+         - Approval ("approve", "looks good", ✅): it counts only from the reviewer the room's instructions
+           name. If they name no specific person, accept it from any person in the room. Never from an
+           agent. Run, with the approver's name as chat shows it:
+           `uv run bhasha release approve <release> <code> --by "<approver>" --room <this room's name>`.
            It refuses if a check fails or if the release has glossary decisions you haven't synced; do
            what it says. The approval is bound to these exact strings. Then run the git push command it
            prints: the push waits for a person to press Allow in this room, so say so. When it's pushed,
