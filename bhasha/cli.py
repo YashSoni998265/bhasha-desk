@@ -281,8 +281,12 @@ def cmd_serve(args) -> int:
 def cmd_demo_clean(args) -> int:
     cwd = Path(args.C or Path.cwd()).resolve()
     prefix = release.branch(args.release)
-    branches = [b for b in gitops.git(cwd, "for-each-ref", "--format=%(refname:short)", "refs/heads/l10n/").splitlines()
-                if b == prefix or b.startswith(prefix + "-")]
+    known = set(Catalog.at(find_root(cwd)).languages)
+
+    def ours(name: str) -> bool:
+        return name == prefix or (name.startswith(prefix + "-") and name[len(prefix) + 1:] in known)
+
+    branches = [b for b in gitops.git(cwd, "for-each-ref", "--format=%(refname:short)", "refs/heads/l10n/").splitlines() if ours(b)]
     for b in branches:
         wt = gitops.worktree_for(cwd, b)
         if wt:
@@ -293,7 +297,7 @@ def cmd_demo_clean(args) -> int:
     if args.remote and gitops.has_remote(cwd):
         gitops.fetch(cwd)
         remote = [b[len("origin/"):] for b in gitops.git(cwd, "for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/l10n/").splitlines()]
-        remote = [b for b in remote if b == prefix or b.startswith(prefix + "-")]
+        remote = [b for b in remote if ours(b)]
         if remote:
             gitops.git(cwd, "push", "origin", "--delete", *remote)
             print("deleted on origin: " + ", ".join(remote))

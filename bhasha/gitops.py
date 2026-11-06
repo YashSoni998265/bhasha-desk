@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -15,15 +16,21 @@ AGENT_EMAIL = "bhasha-desk-agent@users.noreply.github.com"
 
 
 def git(cwd: Path, *args: str, check: bool = True, env: Optional[dict] = None) -> str:
-    proc = subprocess.run(
-        ["git", *args],
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        env={**os.environ, **(env or {})},
-    )
-    if check and proc.returncode != 0:
+    # Translator sessions for different languages share one clone and are often
+    # briefed seconds apart, so a git lock held by the other session is retried.
+    for attempt in range(6):
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            env={**os.environ, **(env or {})},
+        )
         detail = (proc.stderr or proc.stdout).strip()
+        if proc.returncode == 0 or ".lock" not in detail or attempt == 5:
+            break
+        time.sleep(0.5 * (attempt + 1))
+    if check and proc.returncode != 0:
         raise BhashaError(f"git {' '.join(args)} failed: {detail}")
     return proc.stdout.strip()
 

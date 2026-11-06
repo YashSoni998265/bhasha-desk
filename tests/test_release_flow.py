@@ -144,6 +144,18 @@ def test_release_from_start_to_notes(team, tmp_path, capsys):
     sh(merged["worktree"], "push", "-q", "-u", "origin", "l10n/r2.4")
 
 
+def test_releases_with_a_shared_prefix_stay_apart(team, tmp_path):
+    scout, translator = team["scout"], team["translator"]
+    for name in ("2.4-trial", "2.4"):
+        sh(release.start(scout, name)["worktree"], "push", "-q", "-u", "origin", release.branch(name))
+    trial_ta = Path(release.lang(translator, "2.4-trial", "ta")["worktree"])
+    sh(trial_ta, "push", "-q", "-u", "origin", "l10n/r2.4-trial-ta")
+    codes = {r["language"]: r["state"] for r in release.status(translator, "2.4")["languages"]}
+    assert codes == {"hi": "not started", "ta": "not started"}  # not "trial-ta"
+    assert bhasha("-C", translator, "demo", "clean", "2.4", "--remote") == 0
+    assert release.status(translator, "2.4-trial")["languages"][1]["ref"] == "origin/l10n/r2.4-trial-ta"
+
+
 def test_apply_refuses_unknown_keys_and_bad_json(team, tmp_path, capsys):
     root = team["translator"]
     assert bhasha("-C", root, "apply", "ta", write(tmp_path, "x.json", {"not.a.key": "x"})) == 2

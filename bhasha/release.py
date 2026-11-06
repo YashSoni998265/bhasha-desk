@@ -129,19 +129,26 @@ def language_report(cwd: Path, ref: str, code: str, release: str) -> dict:
     }
 
 
-def languages_in_release(cwd: Path, release: str) -> list:
-    codes = []
-    base = gitops.best_ref(cwd, branch(release)) or _start_point(cwd)
-    index = gitops.show(cwd, base, f"{LOCALES}/index.json")
-    if index:
-        codes = [c for c in json.loads(index) if c != "en"]
+def language_branches(cwd: Path, release: str, known: set) -> list:
+    """Language codes with a branch for this release (local or on origin).
+
+    Only real language codes count, so release 2.4 never mistakes the branches
+    of a release called 2.4-trial (l10n/r2.4-trial-ta) for its own.
+    """
     prefix = branch(release) + "-"
+    found = []
     for ref in gitops.git(cwd, "for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/l10n/", "refs/heads/l10n/").splitlines():
         name = ref[len("origin/"):] if ref.startswith("origin/") else ref
-        if name.startswith(prefix):
-            code = name[len(prefix):]
-            if code not in codes:
-                codes.append(code)
+        code = name[len(prefix):] if name.startswith(prefix) else None
+        if code in known and code not in found:
+            found.append(code)
+    return found
+
+
+def languages_in_release(cwd: Path, release: str) -> list:
+    base = Catalog(gitops.ref_reader(cwd, gitops.best_ref(cwd, branch(release)) or _start_point(cwd)))
+    codes = base.target_languages()
+    codes += [c for c in language_branches(cwd, release, set(base.languages)) if c not in codes]
     return codes
 
 
