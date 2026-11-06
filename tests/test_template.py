@@ -121,3 +121,11 @@ def test_every_bhasha_command_in_a_prompt_exists(doc):
         for word in words:
             if word.startswith("--"):
                 assert word.split("=")[0] in _options(parser), f"{command}: {word} isn't an option"
+
+
+def test_every_kickoff_makes_its_agent_state_its_limits(doc):
+    """The Switch guide: the first thing anyone reads in a room is what its agent will and won't do."""
+    for room in doc["rooms"]:
+        kickoff = room.get("kickoff") or ""
+        assert kickoff, f"{room['name']} has no kickoff"
+        assert "never" in kickoff, f"{room['name']}'s kickoff should make the agent say what it will never do"

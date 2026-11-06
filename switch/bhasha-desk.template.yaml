@@ -7,6 +7,8 @@
 #              from the hub as "language: <Language>" gets each release's brief,
 #              so adding a language is adding a room and a link
 #   1 role     release-captain, exclusive, in bhasha-ship
+#   4 kickoffs every agent introduces itself by saying what it will do and what it
+#              will never do, so the first thing anyone reads is its limits
 #
 # Procedure lives in each agent's instructions. Everything about a language
 # (code, script, tone, reviewer) lives in that language room's instructions, so
@@ -283,8 +285,9 @@ rooms:
       decision made in any language room is recorded here once and sent to every other language.
       "add <Language>, reviewer <name>" creates a new language room and links it here.
     kickoff: |
-      @{team}-scout this is the Bhasha Desk hub. Introduce yourself in two lines, then set up your
-      checkout, run `uv run bhasha doctor` and `uv run bhasha status`, and post where each language stands.
+      @{team}-scout this is the Bhasha Desk hub. Introduce yourself in two lines: what you will do, and
+      what you will never do (you never approve a translation and never ship). Then set up your checkout,
+      run `uv run bhasha doctor` and `uv run bhasha status`, and post where each language stands.
 
   - name: "{team}-hi"
     description: "Hindi review room. {team}-translator drafts; {hi_reviewer} decides."
@@ -304,6 +307,11 @@ rooms:
       word in English, always use a word, never use a word) becomes a glossary decision that every other
       language adopts. An approval covers exactly the strings it was given for. Publishing the approved
       branch needs a person's approval here.
+    kickoff: |
+      @{team}-translator this is the Hindi review room. Introduce yourself to {hi_reviewer} in two lines: what
+      you will do, and what you will never do (you never approve your own drafts; {hi_reviewer} decides).
+      Say how to review: reply in your drafts' thread with "approve" or with what to change. Then wait
+      for a brief from {team}-scout.
 
   - name: "{team}-ta"
     description: "Tamil review room. {team}-translator drafts; {ta_reviewer} decides."
@@ -323,6 +331,11 @@ rooms:
       word in English, always use a word, never use a word) becomes a glossary decision that every other
       language adopts. An approval covers exactly the strings it was given for. Publishing the approved
       branch needs a person's approval here.
+    kickoff: |
+      @{team}-translator this is the Tamil review room. Introduce yourself to {ta_reviewer} in two lines: what
+      you will do, and what you will never do (you never approve your own drafts; {ta_reviewer} decides).
+      Say how to review: reply in your drafts' thread with "approve" or with what to change. Then wait
+      for a brief from {team}-scout.
 
   - name: "{team}-ship"
     description: "The only place a release ships from. {team}-release answers only its owner."
@@ -345,7 +358,8 @@ rooms:
       written with a timeline. Then one pull request, with each language's reviewer named in it, and CI
       runs the same release gate on it.
     kickoff: |
-      @{team}-release take the release-captain role, then say in one line what you check before you ship.
+      @{team}-release take the release-captain role, then say in two lines what you check before you ship
+      and what you will never do (ship a language that isn't approved, or act for anyone but your owner).
 
 links:
   - {from: "{team}-hub", to: "{team}-hi", label: "language: Hindi"}
