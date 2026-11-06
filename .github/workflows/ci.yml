@@ -1,0 +1,43 @@
+# Two jobs on every push and pull request:
+#   tests      the test suite on the oldest and newest Python we support
+#   l10n gate  `bhasha ci`, which picks the check from the branch:
+#              on the release pull request (l10n/r<release>) it is the release
+#              gate: every language translated, checked, and approved, with each
+#              approval's digest matching the strings being merged.
+# Actions are pinned by commit, with the release they came from beside them.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Test suite
+        run: uv run --python ${{ matrix.python }} --group dev pytest -q
+
+  l10n-gate:
+    name: l10n gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Release gate on l10n/r<release>, translation checks everywhere else
+        run: uv run bhasha ci
